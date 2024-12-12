@@ -8,6 +8,7 @@ Stops when a Media is found that is already downloaded!
 ## Requirements
  - Python >= 3.8
  - pip installed
+ - ffmpeg installed
 ---
 ## Basic Usage (Downloading Media from a Subreddit or User)
 ```
