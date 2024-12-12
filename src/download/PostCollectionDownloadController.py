@@ -44,7 +44,7 @@ class PostCollectionDownloadController:
                 intDownloadedPosts += 1
 
                 if not objPost.IsLink:
-                    StdOut.print('PostCollectionDownloadController', 'start Post {0} ({1}/{2})'.format(objPost.ID, intDownloadedPosts, intRemainingPosts))
+                    StdOut.print('PostCollectionDownloadController', 'start Post {0} ({1}/{2})'.format(objPost.ID, intDownloadedPosts, intPostLimit))
                     if objPostDownloadController.downloadPost(objPost):
                         # post is pinned, do not exit!
                         if objPost.IsPinned:
