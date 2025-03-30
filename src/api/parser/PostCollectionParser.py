@@ -25,12 +25,17 @@ class PostCollectionParser:
             boolIsVideo = 'post_hint' in objChild['data'] and (objChild['data']['post_hint'] == 'hosted:video' or objChild['data']['post_hint'] == 'rich:video')
             boolIsLink = 'post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'link'
             boolIsSelf = 'post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'self'  # a Text post with a Thumbnail?
-            boolIsVimeoVideo = boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'vimeo.com'
+
+            boolIsExternalVideo = boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'vimeo.com' # external Videos -> can't be processed (no reddit rendered preview)
+
+            if not boolIsExternalVideo:
+                boolIsExternalVideo = ('post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'video'
+                                       and 'domain' in objChild['data'] and objChild['data']['domain'] == 'dropbox.com')
 
             boolIsPinned = 'pinned' in objChild['data'] and objChild['data']['pinned']
 
             # we can't process vimeo Videos
-            if not boolIsVimeoVideo:
+            if not boolIsExternalVideo:
                 # native reddit video
                 if boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'v.redd.it':
                     if 'media' in objChild['data'] and 'reddit_video' in objChild['data']['media']:
