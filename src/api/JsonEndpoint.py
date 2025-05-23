@@ -7,7 +7,10 @@ class JsonEndpoint:
     def __requestUrl(self, strUrl: str) -> requests.Response:
         objHeader = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0'}
         StdOut.print('JsonEndpoint', 'GET {0}'.format(strUrl))
-        return requests.get(strUrl, headers=objHeader, timeout=60)
+        response = requests.get(strUrl, headers=objHeader, timeout=60)
+        response.raise_for_status()
+
+        return response
 
     def requestUser(self, strUser: str, intLimit: int, strAfterToken: str) -> dict:
         strUrl: str = 'https://www.reddit.com/user/{0}/submitted.json?limit={1}&t=all'.format(strUser, intLimit)

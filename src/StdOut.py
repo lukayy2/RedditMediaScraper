@@ -1,4 +1,5 @@
 import datetime
+import sys
 
 
 class StdOut:
@@ -10,3 +11,8 @@ class StdOut:
     @staticmethod
     def update(strMessage: str) -> None:
         print(strMessage)
+
+    @staticmethod
+    def err(strMessage: str) -> None:
+        objDateTimeNow = datetime.datetime.now()
+        print('\033[91m[{0}] [{1}]: {2}\033[0m'.format(objDateTimeNow.strftime("%Y-%m-%d %H:%M:%S"), 'error', strMessage), file=sys.stderr)

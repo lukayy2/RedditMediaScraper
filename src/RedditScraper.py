@@ -35,4 +35,7 @@ class RedditScraper:
             objConfig.all = False
 
         objPostCollectionDownloadController = PostCollectionDownloadController()
-        objPostCollectionDownloadController.download(objPostCollectionType, strPostCollectionName, objConfig.outdir, objConfig.limit, objConfig.wait, objConfig.all)
+        try:
+            objPostCollectionDownloadController.download(objPostCollectionType, strPostCollectionName, objConfig.outdir, objConfig.limit, objConfig.wait, objConfig.all)
+        except Exception as e:
+            StdOut.err(e.__str__())
