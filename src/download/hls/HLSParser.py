@@ -45,9 +45,22 @@ class HLSParser:
                 objMedia: Media = objPlaylist.media[0]
 
                 strMediaUri: str = objMedia.uri
-                strMediaUri = strMediaUri.lower()
-                strMediaUri = strMediaUri.replace('hls_audio_', '')
-                intAudioQuality = int(strMediaUri.replace('.m3u8', ''))
+                strMediaUri = strMediaUri.replace('.m3u8', '')
+
+                if strMediaUri.find('_') > 0:
+                    arrMediaUri = strMediaUri.split('_')
+                    arrMediaUri.reverse()
+
+                    for part in arrMediaUri:
+                        if part.isdigit():
+                            intAudioQuality = int(part)
+                            break
+
+                else:
+                    intAudioQuality = int(strMediaUri.replace('.m3u8', ''))
+
+                if intAudioQuality == 0:
+                    raise RuntimeError("failed to determine Audio Quality! playlist uri: {0}".format(objPlaylist.uri))
 
             objRatedPlaylist = RatedPlaylist(intVideoQuality, intAudioQuality, objPlaylist)
             self.__listRatetPlaylists.append(objRatedPlaylist)

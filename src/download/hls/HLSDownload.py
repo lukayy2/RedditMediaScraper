@@ -5,10 +5,12 @@ import subprocess
 import m3u8
 import requests
 from m3u8 import M3U8, Media, Segment
+from m3u8.model import InitializationSection
 
 from src.Const import Const
 from src.StdOut import StdOut
 from src.download.hls.HLSParser import HLSParser
+from src.file.FileName import FileName
 
 
 class HLSDownload:
@@ -29,8 +31,8 @@ class HLSDownload:
         self.__strPathVideoPlaylist = self.__strPathTmpDir + 'HLS_Video.m3u8'
         self.__strPathAudioPlaylist = self.__strPathTmpDir + 'HLS_Audio.m3u8'
 
-        self.__strPathVideoFile = self.__strPathTmpDir + 'HLS_Video.ts'
-        self.__strPathAudioFile = self.__strPathTmpDir + 'HLS_Audio.aac'
+        self.__strPathVideoFile = self.__strPathTmpDir + 'HLS_Video.{EXT}'
+        self.__strPathAudioFile = self.__strPathTmpDir + 'HLS_Audio.{EXT}'
 
     def download(self) -> int:
         self.__createTmpDir(self.__strPathTmpDir)
@@ -43,6 +45,10 @@ class HLSDownload:
 
         objVideoPlaylist = self.__downloadPlaylist(strVideoPlaylistUrl, self.__strPathVideoPlaylist)
         listVideoSegments = self.__downloadContentFromPlaylist(objVideoPlaylist)
+
+        arrVideoFileName = FileName.splitFileExtension(listVideoSegments[0])
+        self.__strPathVideoFile = self.__strPathVideoFile.replace('{EXT}', arrVideoFileName[1])
+
         self.__combineSegmentsToFile(listVideoSegments, self.__strPathVideoFile)
 
         # is there an Audio Track?
@@ -52,6 +58,10 @@ class HLSDownload:
 
             objAudioPlaylist = self.__downloadPlaylist(strAudioPlaylistUrl, self.__strPathAudioPlaylist)
             listAudioSegments = self.__downloadContentFromPlaylist(objAudioPlaylist)
+
+            arrAudioFileName = FileName.splitFileExtension(listAudioSegments[0])
+            self.__strPathAudioFile = self.__strPathAudioFile.replace('{EXT}', arrAudioFileName[1])
+
             self.__combineSegmentsToFile(listAudioSegments, self.__strPathAudioFile)
 
         self.__combineFilesVideoAndAudio(self.__strPathVideoFile, self.__strPathAudioFile, self.__strDestPath)
@@ -111,32 +121,58 @@ class HLSDownload:
         :param objPlaylist:
         :return:
         """
-        intSegmentCount = 0
 
         listSegments: list[str] = []
+
+        intInitSectionStartByte = 0
+        intInitSectionEndByte = 0
+
+        # check if initialization section of mpeg video is seperatly served -> https://www.rfc-editor.org/rfc/rfc8216#section-4.3.2.5
+        if len(objPlaylist.segment_map) > 0 and isinstance(objPlaylist.segment_map[0], InitializationSection):
+            objInitSection = objPlaylist.segment_map[0]
+
+            arrFileName = FileName.splitFileExtension(objInitSection.uri)
+            strInitDestFileName = arrFileName[0]
+            strInitDestFileNameExt = arrFileName[1]
+
+            arrByteRange = self.__parseByteRange(objInitSection.byterange)
+
+            intInitSectionStartByte = arrByteRange[0]
+            intInitSectionEndByte = arrByteRange[1]
+
+            strInitSegmentUrl = self.__strBaseUrl + objInitSection.uri
+            strInitSegmentFilePath = self.__strPathTmpDir + strInitDestFileName + '_init_segment' + '.' + strInitDestFileNameExt
+
+            self.__downloadSegment(strInitSegmentUrl, strInitSegmentFilePath, intInitSectionStartByte, intInitSectionEndByte)
+            listSegments.append(strInitSegmentFilePath)
+
+        intSegmentCount = 0
+        intLastSegmentEndByte = 0 # for Byterange without @start
 
         for objSegment in objPlaylist.segments:
             objSegment: Segment = objSegment
 
             # StdOut.print('HLSDownload', 'Download segment {0}'.format(intSegmentCount))
 
-            strDestFileName = objSegment.uri[:objSegment.uri.find('.')]
-            strDestFileNameExt = objSegment.uri[objSegment.uri.find('.')+1:]
+            arrFileName = FileName.splitFileExtension(objSegment.uri)
+            strDestFileName = arrFileName[0]
+            strDestFileNameExt = arrFileName[1]
 
             strSegmentUrl = self.__strBaseUrl + objSegment.uri
             strSegmentFilePath = self.__strPathTmpDir + strDestFileName + '_' + str(intSegmentCount) + '_' + strDestFileNameExt
-            intStartByte = 0
-            intEndByte = 0
 
-            strByteRange: str = objSegment.byterange
+            arrByteRange = self.__parseByteRange(objSegment.byterange, intLastSegmentEndByte)
+            intStartByte = arrByteRange[0]
+            intEndByte = arrByteRange[1]
 
-            arrByteRangeSplit: list[str] = strByteRange.split('@')
+            # fix for reddit -> byterange does not always line up correctly. For the first segment, we need to adjust the start byte
+            # -> using the end byte from the initialization section
+            if intSegmentCount == 0 and intStartByte != intInitSectionEndByte:
+                intStartByte = intInitSectionEndByte + 1
 
-            if len(arrByteRangeSplit) == 2:
-                intStartByte = int(arrByteRangeSplit[1])
-                intEndByte = intStartByte + int(arrByteRangeSplit[0])
+            intLastSegmentEndByte = intEndByte
 
-            if len(strByteRange) > 0 and intStartByte == 0 and intEndByte == 0:
+            if intStartByte == 0 and intEndByte == 0:
                 raise RuntimeError('Byterange error on segment: {0} on video: {1}'.format(objSegment.uri, self.__strBaseUrl))
 
             self.__downloadSegment(strSegmentUrl, strSegmentFilePath, intStartByte, intEndByte)
@@ -144,6 +180,28 @@ class HLSDownload:
             intSegmentCount += 1
 
         return listSegments
+
+    def __parseByteRange(self, strByterange: str, intLastSegmentEndByte: int = 0) -> tuple[int, int]:
+        """
+        Parses a Byterange string to start and end byte
+        :param strByterange:
+        :return:
+        """
+        arrByterangeSplit: list[str] = strByterange.split('@')
+
+        intStartByte = 0
+        intEndByte = 0
+
+        # if BYTERANGE="894@0" -> length 894, start 0
+        if len(arrByterangeSplit) == 2:
+            intStartByte = int(arrByterangeSplit[1])
+            intEndByte = intStartByte + int(arrByterangeSplit[0])
+        # if BYTERANGE="894" -> length 894, start next byte after last segment
+        elif len(arrByterangeSplit) == 1 and len(arrByterangeSplit[0]) > 0:
+            intStartByte = intLastSegmentEndByte + 1
+            intEndByte = intStartByte + int(arrByterangeSplit[0])
+
+        return intStartByte, intEndByte
 
     def __combineSegmentsToFile(self, listSegments: list[str], strDestPath: str):
         """
