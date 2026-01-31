@@ -30,8 +30,7 @@ class PostCollectionParser:
             boolIsExternalImage = 'post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'image' and 'domain' in objChild['data'] and objChild['data']['domain'] == 'cdn.discordapp.com' # external Image -> can't be processed (no reddit preview, only external-preview)
 
             if not boolIsExternalVideo:
-                boolIsExternalVideo = ('post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'video'
-                                       and 'domain' in objChild['data'] and objChild['data']['domain'] == 'dropbox.com')
+                boolIsExternalVideo = (boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'dropbox.com')
 
             boolIsPinned = 'pinned' in objChild['data'] and objChild['data']['pinned']
 

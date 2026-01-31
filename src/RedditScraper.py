@@ -3,6 +3,7 @@ from src.StdOut import StdOut
 from src.SystemRequirements import SystemRequirements
 from src.download.PostCollectionDownloadController import PostCollectionDownloadController
 from src.enum.TypeEnum import TypeEnum
+from src.download.DebugPostCollectionController import DebugPostCollectionController
 
 
 class RedditScraper:
@@ -34,8 +35,20 @@ class RedditScraper:
         else:
             objConfig.all = False
 
-        objPostCollectionDownloadController = PostCollectionDownloadController()
-        try:
-            objPostCollectionDownloadController.download(objPostCollectionType, strPostCollectionName, objConfig.outdir, objConfig.limit, objConfig.wait, objConfig.all)
-        except Exception as e:
-            StdOut.err(e.__str__())
+        if objConfig.debugFile is not None:
+            StdOut.print('RedditScraper', 'Debug file detected, no API calls!')
+
+            try:
+                objDebugPostCollectionController = DebugPostCollectionController()
+                objDebugPostCollectionController.processDebugJson(objConfig.debugFile, objConfig.outdir,  objPostCollectionType)
+            except Exception as e:
+                StdOut.err(e.__str__())
+                return
+
+        else:
+
+            objPostCollectionDownloadController = PostCollectionDownloadController()
+            try:
+                objPostCollectionDownloadController.download(objPostCollectionType, strPostCollectionName, objConfig.outdir, objConfig.limit, objConfig.wait, objConfig.all)
+            except Exception as e:
+                StdOut.err(e.__str__())

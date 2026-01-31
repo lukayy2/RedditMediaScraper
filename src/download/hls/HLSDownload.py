@@ -46,8 +46,8 @@ class HLSDownload:
         objVideoPlaylist = self.__downloadPlaylist(strVideoPlaylistUrl, self.__strPathVideoPlaylist)
         listVideoSegments = self.__downloadContentFromPlaylist(objVideoPlaylist)
 
-        arrVideoFileName = FileName.splitFileExtension(listVideoSegments[0])
-        self.__strPathVideoFile = self.__strPathVideoFile.replace('{EXT}', arrVideoFileName[1])
+        strVideoFileExtension = FileName.splitFileExtension(listVideoSegments[0])[1]
+        self.__strPathVideoFile = self.__strPathVideoFile.replace('{EXT}', strVideoFileExtension)
 
         self.__combineSegmentsToFile(listVideoSegments, self.__strPathVideoFile)
 
@@ -59,8 +59,8 @@ class HLSDownload:
             objAudioPlaylist = self.__downloadPlaylist(strAudioPlaylistUrl, self.__strPathAudioPlaylist)
             listAudioSegments = self.__downloadContentFromPlaylist(objAudioPlaylist)
 
-            arrAudioFileName = FileName.splitFileExtension(listAudioSegments[0])
-            self.__strPathAudioFile = self.__strPathAudioFile.replace('{EXT}', arrAudioFileName[1])
+            strAudioFileExtension = FileName.splitFileExtension(listAudioSegments[0])[1]
+            self.__strPathAudioFile = self.__strPathAudioFile.replace('{EXT}', strAudioFileExtension)
 
             self.__combineSegmentsToFile(listAudioSegments, self.__strPathAudioFile)
 
@@ -127,7 +127,7 @@ class HLSDownload:
         intInitSectionStartByte = 0
         intInitSectionEndByte = 0
 
-        # check if initialization section of mpeg video is seperatly served -> https://www.rfc-editor.org/rfc/rfc8216#section-4.3.2.5
+        # check if initialization section of mpeg video is separately served -> https://www.rfc-editor.org/rfc/rfc8216#section-4.3.2.5
         if len(objPlaylist.segment_map) > 0 and isinstance(objPlaylist.segment_map[0], InitializationSection):
             objInitSection = objPlaylist.segment_map[0]
 
@@ -159,7 +159,7 @@ class HLSDownload:
             strDestFileNameExt = arrFileName[1]
 
             strSegmentUrl = self.__strBaseUrl + objSegment.uri
-            strSegmentFilePath = self.__strPathTmpDir + strDestFileName + '_' + str(intSegmentCount) + '_' + strDestFileNameExt
+            strSegmentFilePath = self.__strPathTmpDir + strDestFileName + '_' + str(intSegmentCount) + '.' + strDestFileNameExt
 
             arrByteRange = self.__parseByteRange(objSegment.byterange, intLastSegmentEndByte)
             intStartByte = arrByteRange[0]

@@ -11,5 +11,6 @@ class CliInputParser:
         objParser.add_argument('--limit', help='Number of Posts to max scrape', default=100, type=int)
         objParser.add_argument('--wait', help='Flag to throttle Requests', action=argparse.BooleanOptionalAction, default=False)
         objParser.add_argument('--all', help='Flag to Scrape until limit. Instead of Scraping until last known Post', action=argparse.BooleanOptionalAction)
+        objParser.add_argument('--debugFile', help='A Json file containing a Reddit API Response. If provided, no API call is been made.', default=None)
 
         return objParser.parse_args()
