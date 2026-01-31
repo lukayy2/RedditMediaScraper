@@ -1,10 +1,11 @@
-from src.RedditUrl import RedditUrl
-
+from src.file.FileName import FileName
+from src.url.RedditUrl import RedditUrl
 from src.data.Media import Media
 from src.data.Post import Post
 from src.data.PostCollection import PostCollection
 from src.enum.MediaEnum import MediaEnum
 from src.enum.TypeEnum import TypeEnum
+from src.url.YouTubeUrl import YouTubeUrl
 
 
 class PostCollectionParser:
@@ -26,20 +27,26 @@ class PostCollectionParser:
             boolIsLink = 'post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'link'
             boolIsSelf = 'post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'self'  # a Text post with a Thumbnail?
 
-            boolIsExternalVideo = boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'vimeo.com' # external Videos -> can't be processed (no reddit rendered preview)
+            video_external_domains = {"vimeo.com", "dropbox.com"}
+            boolIsExternalVideo = boolIsVideo and ('domain' in objChild['data']) and (objChild['data']['domain'] in video_external_domains)
+            boolIsYoutubeVideo = boolIsVideo and ('domain' in objChild['data']) and (objChild['data']['domain'] == 'youtube.com')
             boolIsExternalImage = 'post_hint' in objChild['data'] and objChild['data']['post_hint'] == 'image' and 'domain' in objChild['data'] and objChild['data']['domain'] == 'cdn.discordapp.com' # external Image -> can't be processed (no reddit preview, only external-preview)
-
-            if not boolIsExternalVideo:
-                boolIsExternalVideo = (boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'dropbox.com')
 
             boolIsPinned = 'pinned' in objChild['data'] and objChild['data']['pinned']
 
-            # we can't process vimeo Videos
+            # we can't process external Videos
             if not boolIsExternalVideo and not boolIsExternalImage:
                 # native reddit video
                 if boolIsVideo and 'domain' in objChild['data'] and objChild['data']['domain'] == 'v.redd.it':
                     if 'media' in objChild['data'] and 'reddit_video' in objChild['data']['media']:
                         listMedia = self.__parseRedditVideo(objChild['data']['media']['reddit_video'])
+                elif boolIsYoutubeVideo: # using youtube native thumbnail, not reddit preview
+                    if 'secure_media' in objChild['data'] and 'oembed' in objChild['data']['secure_media']:
+                        objOembed = objChild['data']['secure_media']['oembed']
+                        if 'thumbnail_url' in objOembed:
+                            strThumbnailUrl = objOembed['thumbnail_url']
+                            strThumbnailFileExtension = FileName.splitFileExtension(strThumbnailUrl)[1]
+                            listMedia = [Media(YouTubeUrl.videoUrlToVideoID(strThumbnailUrl) + '.' + strThumbnailFileExtension, strThumbnailUrl, MediaEnum.Image)]
                 else:
                     # native image or gif
                     if 'media_metadata' in objChild['data']:
@@ -91,7 +98,7 @@ class PostCollectionParser:
             for objImageJson in objPreviewData['images']:
                 strUrl = objImageJson['source']['url']
 
-                listMedia.append(Media(RedditUrl.previewToImageUrl(strUrl), MediaEnum.Image))
+                listMedia.append(Media(RedditUrl.imageUrlToImageID(strUrl), RedditUrl.previewToImageUrl(strUrl), MediaEnum.Image))
         return listMedia
 
     def __parseMediaMetadata(self, objMediaMetadata: dict) -> list[Media]:
@@ -111,7 +118,7 @@ class PostCollectionParser:
                         strImageUrl = objImageJson['s']['gif']
                     else:
                         strImageUrl = objImageJson['s']['u']
-                    listMedia.append(Media(RedditUrl.previewToImageUrl(strImageUrl), MediaEnum.Image))
+                    listMedia.append(Media(RedditUrl.imageUrlToImageID(strImageUrl), RedditUrl.previewToImageUrl(strImageUrl), MediaEnum.Image))
 
         return listMedia
 
@@ -126,6 +133,6 @@ class PostCollectionParser:
         if strVideoUrl.find('?') > 0:
             strVideoUrl = strVideoUrl[:strVideoUrl.find('?')]
 
-        listMedia: list[Media] = [Media(strVideoUrl, MediaEnum.Video)]
+        listMedia: list[Media] = [Media(RedditUrl.videoUrlToVideoID(strVideoUrl), strVideoUrl, MediaEnum.Video)]
 
         return listMedia

@@ -1,7 +1,6 @@
 import os
 import time
 
-from src.RedditUrl import RedditUrl
 from src.StdOut import StdOut
 from src.data.Post import Post
 from src.download.Downloader import Downloader
@@ -34,17 +33,13 @@ class PostDownloadController:
 
             for objMedia in objPost.arrMedia:
 
-                if objMedia.MediaType == MediaEnum.Image:
-                    strMediaID = RedditUrl.imageUrlToImageID(objMedia.Url)
-                elif objMedia.MediaType == MediaEnum.Video:
-                    strMediaID = RedditUrl.videoUrlToVideoID(objMedia.Url)
-                else:
+                if objMedia.MediaType not in (MediaEnum.Image, MediaEnum.Video):
                     raise RuntimeError('unhandled MediaType!')
 
-                strMediaPath = strPath + objPost.ID + '_' + strMediaID
+                strMediaPath = strPath + objPost.ID + '_' + objMedia.ID
 
                 if not os.path.isfile(strMediaPath):
-                    StdOut.print('PostDownloadController', 'download {0}'.format(strMediaID), '')
+                    StdOut.print('PostDownloadController', 'download {0}'.format(objMedia.ID), '')
 
                     if objMedia.MediaType == MediaEnum.Image:
                         intFileSize = self.objDownloader.download(objMedia.Url, strMediaPath)
@@ -60,7 +55,7 @@ class PostDownloadController:
                     if self.boolRequestThrottling:
                         time.sleep(0.5)
                 else:
-                    StdOut.print('PostDownloadController', 'file {0} already downloaded'.format(strMediaID))
+                    StdOut.print('PostDownloadController', 'file {0} already downloaded'.format(objMedia.ID))
                     boolMediaFound = True
 
         return boolMediaFound
